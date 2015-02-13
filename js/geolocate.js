@@ -33,10 +33,14 @@
 
         initialize: function() {
             var self = this;
-        },
+        }
+    });
 
 
-        url: function() {
+    // weather model
+    Backbone.WeatherModel = Backbone.GeoModel.extend({
+    	// url
+    	 url: function() {
             return ['https://api.forecast.io/forecast/',
                 this.get('api_key'),
                 '/',
@@ -45,10 +49,6 @@
             ].join('');
         }
     });
-
-
-    // weather model
-
 
     // weather view
 
@@ -89,18 +89,18 @@
         }
     });
 
-    var geoModel = new Backbone.GeoModel({
+    var weatherModel = new Backbone.WeatherModel({
         api_key: '95608130b5e2ae64c7a9fddc6cc50f5e'
     });
 
     var weatherView = new Backbone.WeatherView({
         view: 'weather',
-        model: geoModel,
+        model: weatherModel,
         el: '.weather'
     });
 
-    geoModel.geofetch().then(function(data) {
-        console.log(geoModel.toJSON());
+    weatherModel.geofetch().then(function(data) {
+        console.log(weatherModel.toJSON());
     });
 
 })(typeof module === 'object' ? module.exports : window);
