@@ -5,7 +5,7 @@
     "main": "server.js",
     "scripts": {
         "build-all:css": "node-sass ./scss/**.scss -o ./dist",
-        "build:css": "node-sass ./scss/style.scss --stdout | autoprefixer -b 'last 10 versions' > ./dist/style.css & say -v Daniel 'SASS completed!'",
+        "build:css": "node-sass ./scss/style.scss --stdout | autoprefixer -b 'last 10 versions' > ./dist/style.css",
         "watch:css": "watch 'npm run build:css' ./scss/",
 
         "build:js": "npm run lint;",
