@@ -1,0 +1,8 @@
+<div class="currently">
+  <h1><%= Math.round(data.currently.temperature) %></h1>
+  <h4>Feels like <%= Math.round(data.currently.apparentTemperature) %></h4>
+  <h4><%= Math.round(data.currently.humidity * 100) %>% humidity</h4>
+  <h4><%= Math.round(data.currently.cloudCover * 100) %>% cloud cover</h4>
+  <h4><%= data.currently.precipProbability * 100 %>%  chance of precip</h4>
+  <h4><%= Math.round(data.currently.windSpeed) %>mph <%= data.currently.windDirection.trim() %></h4>
+</div>

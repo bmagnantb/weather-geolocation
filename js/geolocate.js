@@ -9,9 +9,8 @@
         },
 
         index: function() {
-            console.log(this);
             this.navigate('here/currently', {
-                trigger: true,
+                trigger: false,
                 replace: true
             });
         },
@@ -23,7 +22,7 @@
 
         initialize: function() {
             Backbone.history.start();
-            weatherModel.geofetch();
+            weatherModel.geoFetch();
         }
     });
 
@@ -53,9 +52,8 @@
             return x;
         },
 
-        // get location, then data
-        geofetch: function() {
-            return this.geo().then(this.fetch.bind(this));
+        geoFetch: function() {
+            this.geo().then(this.fetch.bind(this));
         },
 
         initialize: function() {
@@ -74,6 +72,104 @@
                 this.get('position').coords.latitude + ',' + this.get('position').coords.longitude,
                 '?callback=?'
             ].join('');
+        },
+
+        // get wind directions during fetch
+        parse: function(response, options) {
+            console.log(response);
+            response = this.windDirection(response);
+            response = this.convertTimes(response);
+            return response;
+        },
+
+        // looks for property windBearing, if found adds windDirection property to object
+        windDirection: function(data) {
+            var self = this;
+            // if array, for each item, if array or object, run windDirection
+            if (data instanceof Array) {
+                data.forEach(function(val, ind, arr) {
+                    (val instanceof Object || val instanceof Array) && self.windDirection(val);
+                });
+            }
+
+            // if value is an object, look for windBearing key, if data[key] is object, run windDirection
+            else if (data instanceof Object) {
+                for (var key in data) {
+                    (key === 'windBearing') ? data.windDirection = this.calcDirection(data[key]): null;
+                    data[key] instanceof Object && this.windDirection(data[key]);
+                }
+            }
+
+            return data;
+        },
+
+        // converts angle bearing to cardinal direction
+        calcDirection: function(bearing) {
+            // object keys are direction, values are 2 item array of minimum bearing and maximum bearing
+            var directions = {
+                'N': [0, 11.25],
+                'NNE': [11.25, 33.75],
+                'NE': [33.75, 56.25],
+                'ENE': [56.25, 78.75],
+                'E': [78.75, 101.25],
+                'ESE': [101.25, 123.75],
+                'SE': [123.75, 146.25],
+                'SSE': [146.25, 168.75],
+                'S': [168.75, 191.25],
+                'SSW': [191.25, 213.75],
+                'SW': [213.75, 236.25],
+                'WSW': [236.25, 258.75],
+                'W': [258.75, 281.25],
+                'WNW': [281.25, 303.75],
+                'NW': [303.75, 326.25],
+                'NNW': [326.25, 348.75],
+                'N ': [348.75, 360]
+            };
+
+            // compares bearing to object numbers, gives direction
+            for (var key in directions) {
+                if (bearing > directions[key][0] && bearing <= directions[key][1]) {
+                    return key;
+                }
+            }
+        },
+
+        // finds times and converts epoch time to hour am/pm
+        convertTimes: function(data) {
+            var self = this;
+            // if array, for each item, if array or object, run convertTimes
+            if (data instanceof Array) {
+                data.forEach(function(val, ind, arr) {
+                    (val instanceof Array || val instanceof Object) && self.convertTimes(val);
+                });
+            }
+
+            // if object, check key for string 'time', if so, call this.toHours()
+            else if (data instanceof Object) {
+                for (var key in data) {
+                    if (key.toLowerCase().indexOf('time') > -1) {
+                    	var newkey = key.substr(0, key.toLowerCase().indexOf('time'))+'Hour';
+                    	data[newkey] = this.toHours(data[key]);
+                    }
+                    (data[key] instanceof Object) && this.convertTimes(data[key]);
+                }
+            }
+
+            return data;
+        },
+
+        toHours: function(time) {
+            var hours = new Date(time * 1000).getHours();
+            var minutes = new Date(time * 1000).getMinutes();
+            if (hours === 0) {
+                time = [hours + 12, 'am'];
+            } else if (hours > 12) {
+                time = [hours - 12, 'pm'];
+            } else {
+                time = [hours, 'am'];
+            }
+            // time.splice(1, 0, ':', minutes, ' ');
+            return time.join('');
         }
     });
 
@@ -101,60 +197,14 @@
             return x;
         },
 
-        windDirection: function() {
-            console.log('get wind direction');
-            // give bearing empty default if windBearing not defined
-            var bearing = this.model.attributes.currently ? this.model.attributes.currently.windBearing : '';
-            var dir = '';
-
-            // object keys are direction, values are 2 item array of minimum bearing and maximum bearing
-            var directions = {
-                'N': [0, 11.25],
-                'NNE': [11.25, 33.75],
-                'NE': [33.75, 56.25],
-                'ENE': [56.25, 78.75],
-                'E': [78.75, 101.25],
-                'ESE': [101.25, 123.75],
-                'SE': [123.75, 146.25],
-                'SSE': [146.25, 168.75],
-                'S': [168.75, 191.25],
-                'SSW': [191.25, 213.75],
-                'SW': [213.75, 236.25],
-                'WSW': [236.25, 258.75],
-                'W': [258.75, 281.25],
-                'WNW': [281.25, 303.75],
-                'NW': [303.75, 326.25],
-                'NNW': [326.25, 348.75],
-                'N ': [348.75, 360]
-            };
-
-            // for each key, check if bearing falls between numbers in array, if so set Model's windDirection to key
-            for (var key in directions) {
-                if (bearing > directions[key][0] && bearing <= directions[key][1]) {
-                    dir = [key, this.model.attributes.currently.windBearing];
-                    break;
-                }
-            }
-            // set & prevent event triggering
-            this.model.set('windDirection', dir, {
-                silent: true
-            });
-        },
-
         // render
         render: function() {
             // get template, calc wind direction, then render w/ template
             var self = this;
-            console.log(this);
             this.template(this.options.view)
-                .done(function() {
-                    // if no wind direction on model or wind direction is old (not model's wind bearing)
-                    var modelAttr = self.model.attributes;
-                    if (!modelAttr.windDirection || modelAttr.windDirection[1] !== modelAttr.currently.windBearing) {
-                        console.log(self);
-                        self.windDirection();
-                    }
-                })
+                // .done(function() {
+                //     self.windDirection();
+                // })
                 .done(function(templateFn) {
                     console.log(self.model.toJSON());
                     self.model && (self.el.innerHTML = templateFn({
@@ -178,7 +228,7 @@
     });
 
     window.weatherView = new Backbone.WeatherView({
-        view: '',
+        view: 'currently',
         model: weatherModel,
         el: 'main'
     });
