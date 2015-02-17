@@ -1,9 +1,29 @@
+<nav class="mainmenu grid grid-3-0">
+  <div>
+    <a href="#<%= data.citysearch %>/currently">Current</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/hourly">Hourly</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/week">7-Day</a>
+  </div>
+</nav>
 <div class="tenday">
-    <% data.daily.data.forEach(function(val,ind,arr) { %>
-      <h3><%= new Date(val.time * 1000).toDateString().slice(0,-5) %><h3>
-      <h4>High <%= Math.round(val.temperatureMax) %> at <%= val.temperatureMaxHour %></h4>
-      <h4>Low <%= Math.round(val.temperatureMin) %> at <%= val.temperatureMinHour %></h4>
-    	<h4><%= val.precipProbability * 100 %>% chance of precip</h4>
-    	<h4><%= Math.round(val.windSpeed) %>mph <%= val.windDirection.trim() %></h4>
-	<% }) %>
+  <div class="summary">
+    <h4><%= data.weather.daily.summary %></h3>
+  </div>
+  <div class="grid grid-2-35">
+    <% data.weather.daily.data.forEach(function(val,ind,arr) { %>
+      <div class="day">
+        <div>
+          <h3><%= new Date(val.time * 1000).toDateString().slice(0,-5) %></h3>
+          <h4>High <%= Math.round(val.temperatureMax) %> at <%= val.temperatureMaxHour %></h4>
+          <h4>Low <%= Math.round(val.temperatureMin) %> at <%= val.temperatureMinHour %></h4>
+          <h4><%= Math.round(val.precipProbability * 100) %>% chance of <%= (val.precipType) ? val.precipType : 'precip' %></h4>
+          <h4><%= Math.round(val.windSpeed) %>mph <%= val.windDirection.trim() %></h4>
+        </div>
+      </div>
+      <% }) %>
+  </div>
 </div>

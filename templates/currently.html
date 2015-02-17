@@ -1,8 +1,19 @@
+<nav class="mainmenu grid grid-3-0">
+  <div>
+    <a href="#<%= data.citysearch %>/currently">Current</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/hourly">Hourly</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/week">7-Day</a>
+  </div>
+</nav>
 <div class="currently">
-  <h1><%= Math.round(data.currently.temperature) %></h1>
-  <h4>Feels like <%= Math.round(data.currently.apparentTemperature) %></h4>
-  <h4><%= Math.round(data.currently.humidity * 100) %>% humidity</h4>
-  <h4><%= Math.round(data.currently.cloudCover * 100) %>% cloud cover</h4>
-  <h4><%= data.currently.precipProbability * 100 %>%  chance of precip</h4>
-  <h4><%= Math.round(data.currently.windSpeed) %>mph <%= data.currently.windDirection.trim() %></h4>
+  <h1><%= Math.round(data.weather.currently.temperature) %></h1>
+  <h4>Feels like <%= Math.round(data.weather.currently.apparentTemperature) %></h4>
+  <h4><%= Math.round(data.weather.currently.humidity * 100) %>% humidity</h4>
+  <h4><%= Math.round(data.weather.currently.cloudCover * 100) %>% cloud cover</h4>
+  <h4><%= Math.round(data.weather.currently.precipProbability * 100) %>%  chance of precip</h4>
+  <h4><%= Math.round(data.weather.currently.windSpeed) %>mph <%= data.weather.currently.windDirection.trim() %></h4>
 </div>

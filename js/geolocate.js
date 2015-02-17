@@ -6,23 +6,43 @@
         routes: {
             '': 'index',
             'here/:name': 'here',
+            ':city/:name': 'city'
         },
 
         index: function() {
             this.navigate('here/currently', {
-                trigger: false,
+                trigger: true,
                 replace: true
             });
         },
 
         here: function(name) {
-            weatherView.options.view = name;
-            weatherView.trigger('changeView');
+            locationModel.set('location', geoWeatherModel.get('city'));
+            geoWeatherModel.set('view', name);
+        },
+
+        city: function(city, name) {
+            if (!cities.models[city]) {
+                cities.models[city] = new Backbone.WeatherModel({
+                    weatherApiKey: '95608130b5e2ae64c7a9fddc6cc50f5e',
+                    citysearch: city
+                });
+                cities.views[city] = new Backbone.WeatherView({
+                    model: cities.models[city],
+                    el: 'main'
+                });
+                cities.models[city].set('view', name);
+            } else {
+                if (cities.models[city].get('view') === name) {
+                    cities.models[city].set('view', '');
+                }
+                cities.models[city].set('view', name);
+            }
         },
 
         initialize: function() {
             Backbone.history.start();
-            weatherModel.geoFetch();
+            geoWeatherModel.geoFetch();
         }
     });
 
@@ -53,33 +73,101 @@
         },
 
         geoFetch: function() {
-            this.geo().then(this.fetch.bind(this));
+            this.geo().done(this.getCity.bind(this)).done(this.fetch.bind(this));
         },
 
         initialize: function() {
+        	this.set('citysearch', 'here');
+        },
+
+        // find city name from geolocate coordinates, set on model
+        getCity: function() {
             var self = this;
+            $.get(this.cityUrl()).then(function(data) {
+                var city = self.findName(data.results);
+                self.set('city', city);
+                console.log(self.get('city'));
+            });
+        },
+
+        //look for 'locality' in google maps response -- designates city, then admin level 1 for state
+        findName: function(data) {
+            var result = [];
+            data.forEach(function(val, ind, arr) {
+                (val.types[0] === 'locality') ? result.push(val.address_components[0].long_name): null;
+                (val.types[0] === 'administrative_area_level_1') ? result.push(val.address_components[0].long_name): null;
+                (val.types[0] === 'country') ? result.push(val.address_components[0].long_name) : null;
+            });
+            return result.join(', ');
+        },
+
+        // google maps api for reverse geocoding
+        cityUrl: function() {
+            return ['https://maps.googleapis.com/maps/api/geocode/json?latlng=',
+                this.get('position').coords.latitude + ',' + this.get('position').coords.longitude,
+                '&key=AIzaSyCBkE7k5QfCESrxwB1Fr-3deOAada5QoCE&callback=?'
+            ].join('');
         }
     });
 
 
     // weather model
-    Backbone.WeatherModel = Backbone.GeoModel.extend({
+    Backbone.WeatherModel = Backbone.Model.extend({
+        initialize: function() {
+            console.log(this);
+            this.getCoords(this.get('citysearch'));
+        },
+
         // data url
         url: function() {
             return ['https://api.forecast.io/forecast/',
-                this.get('api_key'),
+                this.get('weatherApiKey'),
                 '/',
                 this.get('position').coords.latitude + ',' + this.get('position').coords.longitude,
                 '?callback=?'
             ].join('');
         },
 
+        getCoords: function() {
+            var self = this;
+            $.get(this.coordsUrl()).then(function(data) {
+            	console.log(data.results[0].address_components);
+            	console.log(self.cityName(data.results[0].address_components));
+                locationModel.set('location', self.cityName(data.results[0].address_components));
+                var result = {
+                    coords: {
+                        latitude: data.results[0].geometry.location.lat,
+                        longitude: data.results[0].geometry.location.lng
+                    }
+                };
+                self.set('position', result);
+            }).done(this.fetch.bind(this));
+        },
+
+        coordsUrl: function() {
+            return ['https://maps.googleapis.com/maps/api/geocode/json?components=locality:',
+                this.get('citysearch'),
+                '&key=AIzaSyCBkE7k5QfCESrxwB1Fr-3deOAada5QoCE&callback=?'
+            ].join('');
+        },
+
+        cityName: function(data) {
+            var result = [];
+            data.forEach(function(val, ind, arr) {
+                (val.types[0] === 'locality') ? result.push(val.long_name): null;
+                (val.types[0] === 'administrative_area_level_1') ? result.push(val.long_name): null;
+                (val.types[0] === 'country') ? result.push(val.long_name) : null;
+            });
+            return result.join(', ');
+        },
+
         // get wind directions during fetch
         parse: function(response, options) {
-            console.log(response);
             response = this.windDirection(response);
             response = this.convertTimes(response);
-            return response;
+            return {
+                weather: response
+            };
         },
 
         // looks for property windBearing, if found adds windDirection property to object
@@ -148,8 +236,8 @@
             else if (data instanceof Object) {
                 for (var key in data) {
                     if (key.toLowerCase().indexOf('time') > -1) {
-                    	var newkey = key.substr(0, key.toLowerCase().indexOf('time'))+'Hour';
-                    	data[newkey] = this.toHours(data[key]);
+                        var newkey = key.substr(0, key.toLowerCase().indexOf('time')) + 'Hour';
+                        data[newkey] = this.toHours(data[key]);
                     }
                     (data[key] instanceof Object) && this.convertTimes(data[key]);
                 }
@@ -162,24 +250,26 @@
             var hours = new Date(time * 1000).getHours();
             var minutes = new Date(time * 1000).getMinutes();
             if (hours === 0) {
-                time = [hours + 12, 'am'];
+                time = [hours + 12, 'a'];
+            } else if (hours === 12) {
+                time = [hours, 'p'];
             } else if (hours > 12) {
-                time = [hours - 12, 'pm'];
+                time = [hours - 12, 'p'];
             } else {
-                time = [hours, 'am'];
+                time = [hours, 'a'];
             }
             // time.splice(1, 0, ':', minutes, ' ');
             return time.join('');
         }
     });
 
+    // geolocated weather Model
+    Backbone.GeoWeatherModel = Backbone.WeatherModel.extend(Backbone.GeoModel.prototype);
 
     // weather view
     Backbone.WeatherView = Backbone.View.extend({
-        // template cache, keys as template location, values as templating function
         cache: {},
 
-        // get & cache template
         template: function(file) {
             return this.loadTemplate('./templates/' + file + '.html');
         },
@@ -199,12 +289,8 @@
 
         // render
         render: function() {
-            // get template, calc wind direction, then render w/ template
             var self = this;
-            this.template(this.options.view)
-                // .done(function() {
-                //     self.windDirection();
-                // })
+            this.template(this.model.get('view'))
                 .done(function(templateFn) {
                     console.log(self.model.toJSON());
                     self.model && (self.el.innerHTML = templateFn({
@@ -215,24 +301,53 @@
 
         // initialize
         initialize: function(options) {
-            // cache unaltered options in View & add events
             this.options = options;
-            // render when Model changes
-            this.model && this.model.on('change', this.render, this);
-            this.on('changeView', this.render, this);
+            this.listenTo(this.model, 'change:weather change:view', this.render);
         }
     });
 
-    window.weatherModel = new Backbone.WeatherModel({
-        api_key: '95608130b5e2ae64c7a9fddc6cc50f5e'
+    // view for displaying weather location
+    Backbone.LocationView = Backbone.View.extend({
+        render: function() {
+            this.el.innerHTML = this.model.get('location');
+        },
+
+        initialize: function(options) {
+            this.options = options;
+            this.listenTo(this.model, 'change:location', this.render);
+        }
+    });
+
+    // all weathermodels push location to this model
+    window.locationModel = new Backbone.Model();
+
+    window.locationView = new Backbone.LocationView({
+        model: locationModel,
+        el: '.location'
+    });
+
+    window.geoWeatherModel = new Backbone.GeoWeatherModel({
+        weatherApiKey: '95608130b5e2ae64c7a9fddc6cc50f5e'
     });
 
     window.weatherView = new Backbone.WeatherView({
-        view: 'currently',
-        model: weatherModel,
+        model: geoWeatherModel,
         el: 'main'
     });
 
+    window.cities = {
+        models: {},
+        views: {}
+    };
+
     window.geoRouter = new GeoRouter();
+
+    document.querySelector('.search input').addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+            geoRouter.navigate(this.value.replace(' ', '%20')+'/currently', {
+                trigger: true
+            });
+        }
+    });
 
 })(typeof module === 'object' ? module.exports : window);

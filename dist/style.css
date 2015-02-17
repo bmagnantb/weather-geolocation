@@ -841,6 +841,10 @@ abbr[title]:hover {
   .grid-3-0 > * {
     width: 31.33333%; } }
 
+@media only screen and (min-width: 35px) {
+  .grid-2-35 > * {
+    width: 48%; } }
+
 @media only screen and (min-width: 400px) {
   .grid-2-400 > * {
     width: 48%; } }
@@ -919,6 +923,33 @@ header {
 
 main {
   -webkit-transition: opacity .2s ease;
-          transition: opacity .2s ease; }
+          transition: opacity .2s ease;
+  max-width: 42em;
+  margin: 0 auto; }
 
+.summary {
+  text-align: center;
+  max-width: 25em;
+  margin: 0 auto;
+  margin-top: 1em; }
+  .summary h4 {
+    margin-bottom: 0; }
+
+.day {
+  margin: .5em auto;
+  text-align: center;
+  padding: .5em; }
+  .day h4:last-child {
+    margin-bottom: 0; }
+
+.hourly .summary {
+  margin-top: 1; }
+
+.hour {
+  padding: .5em 0;
+  border-bottom: 1px solid #ccc; }
+  .hour:last-child {
+    border: 0; }
+  .hour h4:last-child {
+    margin-bottom: 0; }
 

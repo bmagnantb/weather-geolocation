@@ -1,3 +1,24 @@
+<nav class="mainmenu grid grid-3-0">
+  <div>
+    <a href="#<%= data.citysearch %>/currently">Current</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/hourly">Hourly</a>
+  </div>
+  <div>
+    <a href="#<%= data.citysearch %>/week">7-Day</a>
+  </div>
+</nav>
 <div class="hourly">
-<h3>Hourly Weather</h3>
+	<div class="summary">
+	<h4><%= data.weather.hourly.summary %></h4>
+	</div>
+  <% data.weather.hourly.data.forEach(function(val, ind, arr) { %>
+    <div class="hour">
+      <h3><%= val.Hour %></h3>
+      <h4><%= Math.round(val.temperature) %></h4>
+      <h4><%= Math.round(val.windSpeed) %>mph <%= val.windDirection %></h4>
+      <h4><%= Math.round(val.precipProbability*100) %>%</h4>
+    </div>
+    <% }) %>
 </div>
